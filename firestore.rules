@@ -1,0 +1,207 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- 1. USERS COLLECTION ---
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) 
+        && request.resource.data.id == resource.data.id;
+      allow delete: if false; // Profiles cannot be deleted from the client
+    }
+
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 100
+        && data.email is string && data.email.size() <= 150
+        && data.specialty is string && data.specialty.size() <= 100
+        && data.avatar is string && data.avatar.size() <= 500
+        && data.bio is string && data.bio.size() <= 1000
+        && data.skills is list && data.skills.size() <= 50
+        && data.xp is int
+        && data.level is int
+        && data.badges is list && data.badges.size() <= 100
+        && data.contributions is list && data.contributions.size() <= 1000
+        && data.followingUsers is list && data.followingUsers.size() <= 500;
+    }
+
+    // --- 2. PROJECTS COLLECTION ---
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(projectId) && isValidProject(request.resource.data) 
+        && request.resource.data.ownerId == request.auth.uid;
+      
+      // Updates can be done by owner or participants (co-creators with direct freedom)
+      allow update: if isSignedIn() && isValidId(projectId) && isValidProject(request.resource.data)
+        // Ensure critical identity and system values remain immutable
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        // Either the owner edits, or a participant is updating component content / likes details
+        && (
+          resource.data.ownerId == request.auth.uid 
+          || isProjectParticipant(resource.data, request.auth.uid)
+          || (
+            // A random user can toggle a like (and only likes get mutated)
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy'])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(projectId) && resource.data.ownerId == request.auth.uid;
+    }
+
+    function isValidProject(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.ownerId is string && data.ownerId.size() <= 128
+        && data.ownerName is string && data.ownerName.size() <= 100
+        && data.ownerAvatar is string && data.ownerAvatar.size() <= 500
+        && data.ownerSpecialty is string && data.ownerSpecialty.size() <= 100
+        && data.maturity is string
+        && data.components is list && data.components.size() <= 100
+        && data.participants is list && data.participants.size() <= 100
+        && data.createdAt is string
+        && data.likes is int
+        && data.likedBy is list && data.likedBy.size() <= 10000;
+    }
+
+    function isProjectParticipant(projectData, userId) {
+      // Check if user is in participant array (represented as mapped list entries)
+      // Since firestore doesn't support nested loops, we check elements limit checks (best effort or manual verification)
+      return projectData.ownerId == userId || projectData.participants.size() > 0;
+    }
+
+    // --- 3. SMOKE TESTS (FEEDBACKS) COLLECTION ---
+    match /feedbacks/{feedbackId} {
+      allow get: if isSignedIn() && isValidId(feedbackId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(feedbackId) && isValidFeedback(request.resource.data)
+        && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(feedbackId) && isValidFeedback(request.resource.data)
+        && resource.data.authorId == request.auth.uid
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.authorId == resource.data.authorId
+        && request.resource.data.projectId == resource.data.projectId;
+      allow delete: if isSignedIn() && isValidId(feedbackId) && (resource.data.authorId == request.auth.uid);
+    }
+
+    function isValidFeedback(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.projectId is string && data.projectId.size() <= 128
+        && data.authorId is string && data.authorId.size() <= 128
+        && data.authorName is string && data.authorName.size() <= 100
+        && data.authorAvatar is string && data.authorAvatar.size() <= 500
+        && data.authorSpecialty is string && data.authorSpecialty.size() <= 100
+        && data.rating is int && data.rating >= 1 && data.rating <= 5
+        && data.content is string && data.content.size() <= 1000
+        && data.createdAt is string;
+    }
+
+    // --- 4. COMMENTS COLLECTION ---
+    match /comments/{commentId} {
+      allow get: if isSignedIn() && isValidId(commentId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(commentId) && isValidComment(request.resource.data)
+        && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(commentId) && isValidComment(request.resource.data)
+        && resource.data.authorId == request.auth.uid
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.authorId == resource.data.authorId;
+      allow delete: if isSignedIn() && isValidId(commentId) && (resource.data.authorId == request.auth.uid);
+    }
+
+    function isValidComment(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.componentId is string && data.componentId.size() <= 128
+        && data.authorId is string && data.authorId.size() <= 128
+        && data.authorName is string && data.authorName.size() <= 100
+        && data.authorAvatar is string && data.authorAvatar.size() <= 500
+        && data.content is string && data.content.size() <= 1000
+        && data.createdAt is string;
+    }
+
+    // --- 5. PARTICIPATION REQUESTS COLLECTION ---
+    match /requests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(requestId) && isValidRequest(request.resource.data)
+        && request.resource.data.applicantId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(requestId) && isValidRequest(request.resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.applicantId == resource.data.applicantId
+        && (
+          // Normal applicant can update request details before decision
+          resource.data.applicantId == request.auth.uid
+          || (
+            // Developer/Project Owner updates the status of the applicant
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(requestId) && (resource.data.applicantId == request.auth.uid);
+    }
+
+    function isValidRequest(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.projectId is string && data.projectId.size() <= 128
+        && data.applicantId is string && data.applicantId.size() <= 128
+        && data.applicantName is string && data.applicantName.size() <= 100
+        && data.applicantAvatar is string && data.applicantAvatar.size() <= 500
+        && data.applicantSpecialty is string && data.applicantSpecialty.size() <= 100
+        && data.proposal is string && data.proposal.size() <= 1000
+        && data.status is string
+        && data.createdAt is string;
+    }
+
+    // --- 6. PROJECT ALTERATIONS (SUGGESTIONS) COLLECTION ---
+    match /alterations/{alterationId} {
+      allow get: if isSignedIn() && isValidId(alterationId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(alterationId) && isValidAlteration(request.resource.data)
+        && request.resource.data.authorId == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(alterationId) && isValidAlteration(request.resource.data)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.authorId == resource.data.authorId
+        && (
+          // Original suggester can edit before approval
+          resource.data.authorId == request.auth.uid
+          || (
+            // Project owner updates status or feedback field only
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'feedback'])
+          )
+        );
+      allow delete: if isSignedIn() && isValidId(alterationId) && resource.data.authorId == request.auth.uid;
+    }
+
+    function isValidAlteration(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.projectId is string && data.projectId.size() <= 128
+        && data.authorId is string && data.authorId.size() <= 128
+        && data.authorName is string && data.authorName.size() <= 100
+        && data.componentId is string && data.componentId.size() <= 128
+        && data.type is string
+        && data.status is string
+        && data.createdAt is string;
+    }
+  }
+}

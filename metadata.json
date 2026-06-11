@@ -1,0 +1,8 @@
+{
+  "name": "Remix: CollabExec",
+  "description": "Specialist network for collaborative project execution, idea sharing, and strategic partnerships, featuring gamified contributions and version control.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

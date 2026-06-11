@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile in the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "specialty": { "type": "string" },
+        "avatar": { "type": "string" },
+        "bio": { "type": "string" },
+        "skills": { "type": "array" },
+        "linkedin": { "type": "string" },
+        "github": { "type": "string" },
+        "xp": { "type": "integer" },
+        "level": { "type": "integer" },
+        "badges": { "type": "array" },
+        "contributions": { "type": "array" },
+        "followingUsers": { "type": "array" }
+      },
+      "required": ["id", "name", "email", "specialty", "avatar", "bio", "skills", "xp", "level", "badges", "contributions", "followingUsers"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Project published on the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "ownerName": { "type": "string" },
+        "ownerAvatar": { "type": "string" },
+        "ownerSpecialty": { "type": "string" },
+        "maturity": { "type": "string" },
+        "components": { "type": "array" },
+        "participants": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "likes": { "type": "integer" },
+        "likedBy": { "type": "array" }
+      },
+      "required": ["id", "title", "description", "ownerId", "ownerName", "ownerAvatar", "ownerSpecialty", "maturity", "components", "participants", "createdAt", "likes", "likedBy"]
+    },
+    "SmokeTestFeedback": {
+      "title": "SmokeTestFeedback",
+      "description": "Technical or scientific feedback on projects.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "authorSpecialty": { "type": "string" },
+        "rating": { "type": "integer" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "projectId", "authorId", "authorName", "authorAvatar", "authorSpecialty", "rating", "content", "createdAt"]
+    },
+    "ComponentComment": {
+      "title": "ComponentComment",
+      "description": "Comments attached to project components.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "componentId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "componentId", "authorId", "authorName", "authorAvatar", "content", "createdAt"]
+    },
+    "ParticipationRequest": {
+      "title": "ParticipationRequest",
+      "description": "User requests to join a project.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "applicantId": { "type": "string" },
+        "applicantName": { "type": "string" },
+        "applicantSpecialty": { "type": "string" },
+        "applicantAvatar": { "type": "string" },
+        "proposal": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "projectId", "applicantId", "applicantName", "applicantSpecialty", "applicantAvatar", "proposal", "status", "createdAt"]
+    },
+    "ProjectAlteration": {
+      "title": "ProjectAlteration",
+      "description": "Component edit suggestions or deletion alterations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "projectId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "componentId": { "type": "string" },
+        "type": { "type": "string" },
+        "proposedComponent": { "type": "object" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "projectId", "authorId", "authorName", "componentId", "type", "proposedComponent", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "UserProfile",
+      "description": "Registered user profiles indexed by user ID."
+    },
+    "projects": {
+      "schema": "Project",
+      "description": "Shareable project entries on the platform."
+    },
+    "feedbacks": {
+      "schema": "SmokeTestFeedback",
+      "description": "Smoke test results and project ratings."
+    },
+    "comments": {
+      "schema": "ComponentComment",
+      "description": "Comments left on specific components."
+    },
+    "requests": {
+      "schema": "ParticipationRequest",
+      "description": "Requests from users seeking project alliances."
+    },
+    "alterations": {
+      "schema": "ProjectAlteration",
+      "description": "Proposed changes and structural suggestions for components."
+    }
+  }
+}
